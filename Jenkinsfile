@@ -29,15 +29,17 @@ pipeline {
         stage('Deploy NGINX') {
             steps {
                 sh '''
+                docker build -t custom-nginx ./nginx
                 docker rm -f nginx || true
                 docker run -d \
                   --name nginx \
                   --network lab-network \
                   -p 8081:80 \
-                  -v $(pwd)/nginx/default.conf:/etc/nginx/conf.d/default.conf \
-                  nginx
+                  custom-nginx
                 '''
             }
+        }
+
         }
 
     }
