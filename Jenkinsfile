@@ -1,47 +1,44 @@
 pipeline {
     agent any
+
     stages {
-        stage('Build Backend Image') {
+
+        stage('Clone Repository') {
             steps {
-                sh '''
-                docker rmi -f backend-app || true
-                docker build -t backend-app CC_LAB-6/backend
-                '''
+                echo 'Cloning repository...'
             }
         }
-        stage('Deploy Backend Containers') {
+
+        stage('Build Docker Image') {
+            steps {
+                sh 'docker build -t backend-app backend'
+            }
+        }
+
+        stage('Deploy Containers') {
             steps {
                 sh '''
-                docker network create app-network || true
                 docker rm -f backend1 backend2 || true
-                docker run -d --name backend1 --network app-network backend-app
-                docker run -d --name backend2 --network app-network backend-app
+                docker network create lab-network || true
+                docker run -d --name backend1 --network lab-network backend-app
+                docker run -d --name backend2 --network lab-network backend-app
                 '''
             }
         }
-        stage('Deploy NGINX Load Balancer') {
+
+        stage('Deploy NGINX') {
             steps {
                 sh '''
-                docker rm -f nginx-lb || true
-                
+                docker rm -f nginx || true
                 docker run -d \
-                  --name nginx-lb \
-                  --network app-network \
-                  -p 80:80 \
+                  --name nginx \
+                  --network lab-network \
+                  -p 8081:80 \
+                  -v $(pwd)/nginx/default.conf:/etc/nginx/conf.d/default.conf \
                   nginx
-                
-                docker cp CC_LAB-6/nginx/default.conf nginx-lb:/etc/nginx/conf.d/default.conf
-                docker exec nginx-lb nginx -s reload
                 '''
             }
         }
-    }
-    post {
-        success {
-            echo 'Pipeline executed successfully. NGINX load balancer is running.'
-        }
-        failure {
-            echo 'Pipeline failed. Check console logs for errors.'
-        }
+
     }
 }
